@@ -2,6 +2,43 @@ let currentStations = [];
         let activeStation = null;
         const audio = document.getElementById('audio-stream');
 
+        // Standalone: Radio Browser dogrudan (backend proxy yok, CORS-acik)
+        async function fetchStationsRemote(country, tag, q) {
+          const cleanCountry = (country || '').trim().toUpperCase().slice(0, 3).replace(/[^A-Z]/g, '');
+          const cleanTag = (tag || '').trim().toLowerCase().slice(0, 30).replace(/[^a-z0-9]/g, '');
+          const cleanQ = (q || '').trim().toLowerCase().slice(0, 40).replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s]/g, '');
+
+          let url = 'https://de1.api.radio-browser.info/json/stations/search?limit=36&hidebroken=true&order=clickcount&reverse=true';
+          if (cleanCountry && cleanCountry !== 'ALL') {
+            url += '&countrycode=' + encodeURIComponent(cleanCountry);
+          }
+          if (cleanTag && cleanTag !== 'all') {
+            url += '&tag=' + encodeURIComponent(cleanTag);
+          }
+          if (cleanQ) {
+            url += '&name=' + encodeURIComponent(cleanQ);
+          }
+
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('Radyo servisi yanıt vermedi (HTTP ' + response.status + ')');
+          const stations = await response.json();
+
+          const formatted = stations.map(s => ({
+            id: s.stationuuid || Math.random().toString(36).substring(2),
+            name: s.name || 'İsimsiz Radyo',
+            url: s.url_resolved || s.url,
+            homepage: s.homepage || '',
+            favicon: s.favicon || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80',
+            tags: (s.tags || '').split(',').map(t => t.trim()).filter(Boolean).slice(0, 3),
+            country: s.country || '',
+            countryCode: s.countrycode || '',
+            bitrate: s.bitrate || 128,
+            votes: s.votes || 0
+          })).filter(s => s.url && (s.url.startsWith('http://') || s.url.startsWith('https://')));
+
+          return { success: true, count: formatted.length, stations: formatted };
+        }
+
         async function loadStations() {
           const loading = document.getElementById('radio-loading');
           const grid = document.getElementById('stations-grid');
@@ -13,9 +50,7 @@ let currentStations = [];
           grid.classList.add('hidden');
 
           try {
-            const url = `/api/radio/stations?country=${encodeURIComponent(country)}&tag=${encodeURIComponent(tag)}&q=${encodeURIComponent(q)}`;
-            const res = await fetch(url);
-            const data = await res.json();
+            const data = await fetchStationsRemote(country, tag, q);
 
             if (!data.success) throw new Error(data.error);
 
@@ -63,7 +98,7 @@ let currentStations = [];
                 <div class="pt-2 border-t border-mistral-hairline flex items-center justify-between gap-2">
                   <button 
                     onclick="playStation('${s.id}')" 
-                    class="flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 ${isPlayingThis ? 'bg-mistral-orange text-white' : 'text-mistral-ink font-boldbg-mistral-cream hover:bg-mistral-cream-deeper text-mistral-ink border border-mistral-beige-deep'}">
+                    class="flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 ${isPlayingThis ? 'bg-mistral-orange text-white' : 'text-mistral-ink font-bold bg-mistral-cream hover:bg-mistral-cream-deeper text-mistral-ink border border-mistral-beige-deep'}">
                     <span>${isPlayingThis ? '⏸ Durdur' : '▶ Canlı Dinle'}</span>
                   </button>
                 </div>
