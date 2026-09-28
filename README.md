@@ -9,7 +9,7 @@ Radio Browser API ile 30.000+ küresel canlı radyo yayını, ülke ve müzik t�
 
 ## 🚀 Hızlı Başlangıç
 1. Bu repoyu klonlayın.
-2.  dosyasını tarayıcıda açın.
+2. `index.html` dosyasını tarayıcıda açın.
 
 
 
